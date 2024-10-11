@@ -1,5 +1,7 @@
 
-[![Harlok's WakaTime stats](https://github-readme-stats.vercel.app/api/wakatime?username=e4cc549d-b916-4b7d-ba5a-11655c43a6e0&layout=compact)](https://github.com/anuraghazra/github-readme-stats)
+### WakaTime Weekly
+[![Harlok's WakaTime stats](https://github-readme-stats.vercel.app/api/wakatime?username=e4cc549d-b916-4b7d-ba5a-11655c43a6e0&layout=compact&hide_title=true)](https://github.com/anuraghazra/github-readme-stats)
+
 
 <!--
 **piper-hyowon/piper-hyowon** is a ✨ _special_ ✨ repository because its `README.md` (this file) appears on your GitHub profile.
