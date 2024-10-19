@@ -1,5 +1,5 @@
 
-### WakaTime Weekly
+#### WakaTime Last Year
 [![Harlok's WakaTime stats](https://github-readme-stats.vercel.app/api/wakatime?username=e4cc549d-b916-4b7d-ba5a-11655c43a6e0&layout=compact&hide_title=true)](https://github.com/anuraghazra/github-readme-stats)
 
 
