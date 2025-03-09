@@ -1,20 +1,6 @@
 <!--START_SECTION:waka-->
-![Code Time](http://img.shields.io/badge/Code%20Time-178%20hrs%2056%20mins-blue)
-
 ![Profile Views](http://img.shields.io/badge/Profile%20Views-3-blue)
 
-**🐱 My GitHub Data** 
-
-> 📦 30.5 kB Used in GitHub's Storage 
- > 
-> 🏆 13 Contributions in the Year 2025
- > 
-> 🚫 Not Opted to Hire
- > 
-> 📜 10 Public Repositories 
- > 
-> 🔑 5 Private Repositories 
- > 
 **I'm a Night 🦉** 
 
 ```text
@@ -74,5 +60,5 @@ JavaScript               1 repo              █░░░░░░░░░░�
 ![Lines of Code chart](https://raw.githubusercontent.com/piper-hyowon/piper-hyowon/main/assets/bar_graph.png)
 
 
- Last Updated on 09/03/2025 12:40:05 UTC
+ Last Updated on 09/03/2025 12:42:43 UTC
 <!--END_SECTION:waka-->
