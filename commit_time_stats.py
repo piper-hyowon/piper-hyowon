@@ -13,7 +13,6 @@ headers = {
     'Accept': 'application/vnd.github.v3+json'
 }
 
-
 def get_user_repos():
     repos = []
     page = 1
@@ -66,16 +65,21 @@ def get_commits_for_repo(repo_name):
 
 def analyze_commit_times(all_commits):
     hourly_commits = defaultdict(int)
+    daily_commits = defaultdict(int)
     
     for commit_date in all_commits:
         try:
             dt = datetime.datetime.strptime(commit_date, '%Y-%m-%dT%H:%M:%SZ')
             kr_hour = (dt.hour + 9) % 24
             hourly_commits[kr_hour] += 1
+            
+            kr_dt = dt + datetime.timedelta(hours=9)
+            kr_weekday = kr_dt.weekday()
+            daily_commits[kr_weekday] += 1
         except:
             continue
     
-    return hourly_commits
+    return hourly_commits, daily_commits
 
 def generate_commit_graph(hourly_commits):
     hours = list(range(24))
@@ -130,7 +134,6 @@ def generate_markdown_graph(hourly_commits):
     
     markdown = "## ⏰ Hourly Commit Distribution\n\n```text\n"
     
-    # 시간대별 이모지 추가
     for hour in hours:
         # 이모지 선택
         if 5 <= hour < 9:
@@ -144,7 +147,6 @@ def generate_markdown_graph(hourly_commits):
         else:
             emoji = "🌙"  # 밤
         
-        # 막대 그래프 생성
         count = hourly_commits[hour]
         percentage = (count / max_count) * 100 if max_count > 0 else 0
         bar_length = int(percentage / 5)  # 20개의 막대를 100%로 설정
@@ -152,7 +154,6 @@ def generate_markdown_graph(hourly_commits):
         bar = '█' * bar_length
         spaces = ' ' * (20 - bar_length)
         
-        # 출력 형식 (시간:00 [막대] 커밋수 퍼센트%)
         markdown += f"{emoji} {hour:02d}:00   {bar}{spaces}   {count} commits   {percentage:.2f}%\n"
     
     markdown += "```\n"
