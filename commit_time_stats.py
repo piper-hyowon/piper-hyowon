@@ -39,174 +39,172 @@ def get_commits_for_repo(repo_name):
     commits = []
     page = 1
     while True:
-        response = requests.get(
-            f'https://api.github.com/repos/{USERNAME}/{repo_name}/commits?per_page=100&page={page}&author={USERNAME}',
-            headers=headers
-        )
-        if response.status_code != 200:
-            print(f"저장소 {repo_name}에서 커밋 가져오기 실패: {response.status_code}")
-            print(response.text)
+        try:
+            response = requests.get(
+                f'https://api.github.com/repos/{USERNAME}/{repo_name}/commits?per_page=100&page={page}&author={USERNAME}',
+                headers=headers
+            )
+            if response.status_code != 200:
+                print(f"저장소 {repo_name}에서 커밋 가져오기 실패: {response.status_code}")
+                print(response.text)
+                break
+            
+            new_commits = response.json()
+            if not new_commits:
+                break
+            
+            for commit in new_commits:
+                try:
+                    if 'commit' in commit and 'author' in commit['commit'] and 'date' in commit['commit']['author']:
+                        commits.append(commit['commit']['author']['date'])
+                except Exception as e:
+                    print(f"커밋 데이터 처리 중 오류: {e}")
+                    continue
+            
+            page += 1
+        except Exception as e:
+            print(f"저장소 {repo_name} API 요청 중 오류: {e}")
             break
-        
-        new_commits = response.json()
-        if not new_commits:
-            break
-        
-        for commit in new_commits:
-            try:
-                if 'commit' in commit and 'author' in commit['commit'] and 'date' in commit['commit']['author']:
-                    commits.append(commit['commit']['author']['date'])
-            except:
-                continue
-        
-        page += 1
     
+    print(f"{repo_name}: {len(commits)}개의 커밋을 가져왔습니다.")
     return commits
 
 def analyze_commit_times(all_commits):
     hourly_commits = defaultdict(int)
-    daily_commits = defaultdict(int)
     
     for commit_date in all_commits:
         try:
             dt = datetime.datetime.strptime(commit_date, '%Y-%m-%dT%H:%M:%SZ')
             kr_hour = (dt.hour + 9) % 24
             hourly_commits[kr_hour] += 1
-            
-            kr_dt = dt + datetime.timedelta(hours=9)
-            kr_weekday = kr_dt.weekday()
-            daily_commits[kr_weekday] += 1
-        except:
+        except Exception as e:
+            print(f"날짜 분석 중 오류: {e}, 날짜: {commit_date}")
             continue
     
-    return hourly_commits, daily_commits
+    return dict(hourly_commits)
 
 def generate_commit_graph(hourly_commits):
-    hours = list(range(24))
-    counts = [hourly_commits[hour] for hour in hours]
-    
-    if sum(counts) == 0:
-        print("커밋 데이터가 없습니다.")
-        return
-    
-    colors = []
-    for hour in hours:
-        if 5 <= hour < 9:  # 새벽 (5시-9시)
-            colors.append('#FF9D6C')
-        elif 9 <= hour < 12:  # 아침 (9시-12시)
-            colors.append('#FFCD56')
-        elif 12 <= hour < 18:  # 오후 (12시-18시)
-            colors.append('#4BC0C0')
-        elif 18 <= hour < 22:  # 저녁 (18시-22시)
-            colors.append('#36A2EB')
-        else:  # 밤 (22시-5시)
-            colors.append('#9966FF')
-    
-    plt.figure(figsize=(12, 6))
-    plt.style.use('ggplot')
-    
-    bars = plt.bar(hours, counts, color=colors, width=0.8, alpha=0.7)
-    
-    plt.title('Hourly Commit Distribution', fontsize=16, fontweight='bold')
-    plt.xlabel('Hour of Day (KST)', fontsize=12)
-    plt.ylabel('Number of Commits', fontsize=12)
-    plt.xticks(hours, [f'{h:02d}:00' for h in hours], rotation=45)
-    plt.grid(axis='y', linestyle='--', alpha=0.7)
-    
-    for bar in bars:
-        height = bar.get_height()
-        if height > 0:
-            plt.text(bar.get_x() + bar.get_width()/2., height + 0.1, 
-                    int(height), ha='center', va='bottom', fontsize=9)
-    
-    plt.tight_layout()
-    
-    plt.savefig('commit_time_stats.png', dpi=100, bbox_inches='tight')
-    print("시간대별 커밋 그래프가 생성되었습니다.")
-
-def generate_markdown_graph(hourly_commits):
-    hours = list(range(24))
-    counts = [hourly_commits[hour] for hour in hours]
-    
-    max_count = max(counts) if counts else 0
-    if max_count == 0:
-        return "커밋 데이터가 없습니다."
-    
-    markdown = "## ⏰ Hourly Commit Distribution\n\n```text\n"
-    
-    for hour in hours:
-        # 이모지 선택
-        if 5 <= hour < 9:
-            emoji = "🌅"  # 새벽
-        elif 9 <= hour < 12:
-            emoji = "🌞"  # 아침
-        elif 12 <= hour < 18:
-            emoji = "🌇"  # 오후
-        elif 18 <= hour < 22:
-            emoji = "🌃"  # 저녁
-        else:
-            emoji = "🌙"  # 밤
+    try:
+        hours = list(range(24))
         
-        count = hourly_commits[hour]
-        percentage = (count / max_count) * 100 if max_count > 0 else 0
-        bar_length = int(percentage / 5)  # 20개의 막대를 100%로 설정
+        counts = []
+        for hour in hours:
+            if hour in hourly_commits:
+                counts.append(hourly_commits[hour])
+            else:
+                counts.append(0)
         
-        bar = '█' * bar_length
-        spaces = ' ' * (20 - bar_length)
+        if sum(counts) == 0:
+            print("커밋 데이터가 없습니다.")
+            return
         
-        markdown += f"{emoji} {hour:02d}:00   {bar}{spaces}   {count} commits   {percentage:.2f}%\n"
-    
-    markdown += "```\n"
-    return markdown
+        colors = []
+        for hour in hours:
+            if 5 <= hour < 9: 
+                colors.append('#FF9D6C')
+            elif 9 <= hour < 12: 
+                colors.append('#FFCD56')
+            elif 12 <= hour < 18:
+                colors.append('#4BC0C0')
+            elif 18 <= hour < 22:
+                colors.append('#36A2EB')
+            else:
+                colors.append('#9966FF')
+        
+        plt.figure(figsize=(12, 6))
+        plt.style.use('ggplot')
+        
+        bars = plt.bar(hours, counts, color=colors, width=0.8, alpha=0.7)
+        
+        plt.title('Hourly Commit Distribution (KST)', fontsize=16, fontweight='bold')
+        plt.xlabel('Hour of Day', fontsize=12)
+        plt.ylabel('Number of Commits', fontsize=12)
+        plt.xticks(hours, [f'{h:02d}:00' for h in hours], rotation=45)
+        plt.grid(axis='y', linestyle='--', alpha=0.7)
+        
+        for bar in bars:
+            height = bar.get_height()
+            if height > 0:
+                plt.text(bar.get_x() + bar.get_width()/2., height + 0.1, 
+                        int(height), ha='center', va='bottom', fontsize=9)
+        
+        plt.tight_layout()
+        
+        plt.savefig('commit_time_stats.png', dpi=100, bbox_inches='tight')
+        print("시간대별 커밋 그래프가 생성되었습니다.")
+    except Exception as e:
+        print(f"그래프 생성 중 오류 발생: {e}")
 
 def main():
-    repos = get_user_repos()
-    print(f"{len(repos)}개의 저장소를 찾았습니다.")
-    
-    all_commits = []
-    for repo in repos:
-        commits = get_commits_for_repo(repo)
-        all_commits.extend(commits)
-        print(f"{repo}: {len(commits)}개의 커밋 가져옴")
-    
-    print(f"총 {len(all_commits)}개의 커밋을 분석합니다.")
-    
-    hourly_commits = analyze_commit_times(all_commits)
-    
-    generate_commit_graph(hourly_commits)
-    
-    markdown_graph = generate_markdown_graph(hourly_commits)
-    
-    readme_path = 'README.md'
-    
     try:
-        with open(readme_path, 'r', encoding='utf-8') as f:
-            content = f.read()
+        repos = get_user_repos()
         
-        start_marker = "<!-- HOURLY-COMMIT-STATS:START -->"
-        end_marker = "<!-- HOURLY-COMMIT-STATS:END -->"
+        print(f"총 {len(repos)}개의 저장소를 찾았습니다.")
         
-        if start_marker in content and end_marker in content:
-            start_index = content.find(start_marker) + len(start_marker)
-            end_index = content.find(end_marker)
-            new_content = content[:start_index] + "\n" + markdown_graph + "\n" + content[end_index:]
-        else:
-            waka_end_marker = "<!--END_SECTION:waka-->"
-            if waka_end_marker in content:
-                waka_end_index = content.find(waka_end_marker) + len(waka_end_marker)
-                new_content = (content[:waka_end_index] + "\n\n" + 
-                              start_marker + "\n" + markdown_graph + "\n" + end_marker + "\n" +
-                              content[waka_end_index:])
+        all_commits = []
+        for repo in repos:
+            commits = get_commits_for_repo(repo)
+            all_commits.extend(commits)
+        
+        print(f"총 {len(all_commits)}개의 커밋을 분석합니다.")
+        
+        hourly_commits = analyze_commit_times(all_commits)
+        
+        print("시간대별 커밋 수:")
+        for hour in range(24):
+            print(f"{hour:02d}시: {hourly_commits.get(hour, 0)}개")
+        
+        generate_commit_graph(hourly_commits)
+        
+        try:
+            readme_path = 'README.md'
+            
+            with open(readme_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            start_marker = "<!-- HOURLY-COMMIT-GRAPH:START -->"
+            end_marker = "<!-- HOURLY-COMMIT-GRAPH:END -->"
+            
+            if start_marker in content and end_marker in content:
+                start_index = content.find(start_marker) + len(start_marker)
+                end_index = content.find(end_marker)
+                new_content = (content[:start_index] + 
+                              "\n![Hourly Commit Distribution](./commit_time_stats.png)\n" + 
+                              content[end_index:])
             else:
-                new_content = content + "\n\n" + start_marker + "\n" + markdown_graph + "\n" + end_marker + "\n"
-        
-        with open(readme_path, 'w', encoding='utf-8') as f:
-            f.write(new_content)
-        
-        print("README 파일이 업데이트되었습니다.")
-        
+                waka_end_marker = "<!--END_SECTION:waka-->"
+                if waka_end_marker in content:
+                    waka_end_index = content.find(waka_end_marker) + len(waka_end_marker)
+                    
+                    if start_marker in content:
+                        print("마커가 이미 존재하지만, 마커 쌍이 완전하지 않습니다. 수정하지 않습니다.")
+                        return
+                    
+                    new_content = (content[:waka_end_index] + "\n\n" + 
+                                  start_marker + "\n" +
+                                  "![Hourly Commit Distribution](./commit_time_stats.png)\n" + 
+                                  end_marker + "\n" +
+                                  content[waka_end_index:])
+                else:
+                    if start_marker in content:
+                        print("마커가 이미 존재하지만, 마커 쌍이 완전하지 않습니다. 수정하지 않습니다.")
+                        return
+                    
+                    new_content = (content + "\n\n" + 
+                                  start_marker + "\n" +
+                                  "![Hourly Commit Distribution](./commit_time_stats.png)\n" + 
+                                  end_marker + "\n")
+            
+            with open(readme_path, 'w', encoding='utf-8') as f:
+                f.write(new_content)
+            
+            print("README 업데이트가 완료되었습니다.")
+            
+        except Exception as e:
+            print(f"README 업데이트 중 오류 발생: {e}")
+    
     except Exception as e:
-        print(f"README 업데이트 중 오류 발생: {e}")
+        print(f"스크립트 실행 중 오류 발생: {e}")
 
 if __name__ == "__main__":
     main()
